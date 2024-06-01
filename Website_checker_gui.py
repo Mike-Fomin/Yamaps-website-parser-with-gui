@@ -190,7 +190,7 @@ def parse() -> None:
                             logtext.emit('добавляю к результату!')
                             goods.append(website)
                             counter += 1
-                            count_log.()
+                            count_log.delete()
                             count_log.emit(f" {counter}")
 
                 else:
