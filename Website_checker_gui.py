@@ -6,6 +6,7 @@ import chromedriver_autoinstaller
 import tkinter as tk
 import logging
 import threading
+import traceback
 
 from tkinter.font import Font
 from tkinter import filedialog
@@ -73,8 +74,8 @@ def parse() -> None:
     # image disable
     options.add_argument('--blink-settings=imagesEnabled=false')
 
-    options.add_argument("--headless")
-    options.add_argument("--window-size=1920,1080")
+    # options.add_argument("--headless")
+    # options.add_argument("--window-size=1920,1080")
 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
@@ -114,6 +115,7 @@ def parse() -> None:
         mode: str = 'w'
         index: int = 0
         counter: int = 0
+    count_log.delete()
     count_log.emit(f" {counter}")
 
     goods: list = []
@@ -178,7 +180,7 @@ def parse() -> None:
                         if reviews == 'ещё нет отзывов':
                             revs = 0
                         else:
-                            revs = int(reviews.split()[0])
+                            revs = int(reviews.split()[0].replace('(', '').replace(')', ''))
                         status = card.find(name='div', class_='business-card-title-view__bottom').text.lower()
                         if revs < 2:
                             logtext.emit('не хватает отзывов')
@@ -196,9 +198,9 @@ def parse() -> None:
                 else:
                     continue
 
-    except BaseException as _ex:
+    except BaseException:
         print()
-        print(_ex)
+        traceback.print_exc()
         logtext.emit(f'\nПоследний элемент = {website}, строка {i}')
 
         with open('cond.json', 'w', encoding='utf-8') as json_file:
