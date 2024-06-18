@@ -74,8 +74,8 @@ def parse() -> None:
     # image disable
     options.add_argument('--blink-settings=imagesEnabled=false')
 
-    # options.add_argument("--headless")
-    # options.add_argument("--window-size=1920,1080")
+    options.add_argument("--headless")
+    options.add_argument("--window-size=1920,1080")
 
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
