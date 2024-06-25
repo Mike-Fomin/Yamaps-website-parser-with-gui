@@ -201,7 +201,12 @@ def parse() -> None:
     except BaseException:
         print()
         traceback.print_exc()
+        logtext.emit(traceback.format_exc())
         logtext.emit(f'\nПоследний элемент = {website}, строка {i}')
+
+        driver.save_screenshot('error.png')
+        with open('error.txt', 'w', encoding='utf-8') as error_file:
+            error_file.write(traceback.format_exc())
 
         with open('cond.json', 'w', encoding='utf-8') as json_file:
             json.dump(item, json_file, indent=4, ensure_ascii=False)
