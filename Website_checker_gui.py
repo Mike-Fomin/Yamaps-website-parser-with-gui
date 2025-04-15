@@ -7,6 +7,7 @@ import tkinter as tk
 import logging
 import threading
 import traceback
+import openpyxl
 
 from tkinter.font import Font
 from tkinter import filedialog
@@ -18,6 +19,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from openpyxl.workbook.workbook import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 
 FLAG: bool = False
@@ -107,12 +110,10 @@ def parse() -> None:
     if os.path.exists('cond.json'):
         with open('cond.json', 'r', encoding='utf-8') as json_file:
             json_data = json.load(json_file)
-        mode: str = 'a'
         index: int = json_data['index']
         counter: int = json_data['counter']
         logtext.emit(f"Продолжаем с элемента {json_data['index']} - {json_data['website']}\n")
     else:
-        mode: str = 'w'
         index: int = 0
         counter: int = 0
     count_log.delete()
@@ -158,6 +159,10 @@ def parse() -> None:
             if empty:
                 continue
             else:
+                title = card.find(name='h1', attrs={'itemprop': 'name'})
+                categories_block = card.find(name='div', class_='business-card-title-view__categories')
+                categories: list = categories_block.find_all(name='a')
+
                 url_block = card.find(name='div', class_='business-urls-view')
                 if url_block:
                     more = url_block.find(name='div', class_='card-feature-view__additional')
@@ -190,7 +195,16 @@ def parse() -> None:
                             continue
                         else:
                             logtext.emit('добавляю к результату!')
-                            goods.append(website)
+
+                            title_text: str = title.text.strip()
+                            category: str = '; '.join(list(map(lambda x: x.get('title'), categories)))
+                            new_item: dict[str, str] = {
+                                'website': website,
+                                'title': title_text,
+                                'category': category
+                            }
+                            goods.append(new_item)
+
                             counter += 1
                             count_log.delete()
                             count_log.emit(f" {counter}")
@@ -218,8 +232,24 @@ def parse() -> None:
     finally:
         FLAG = False
 
-        with open(file='Result_yandex_plus.txt', mode=mode, encoding='utf-8') as out:
-            out.writelines(list(map(lambda x: x + '\n', goods)))
+        if os.path.exists('Result.xlsx'):
+            wb: Workbook = openpyxl.load_workbook('Result.xlsx')
+            ws: Worksheet = wb.active
+            row: int = 0
+            for row, data in enumerate(ws.iter_rows(values_only=True), 1):
+                if not data[0]:
+                    break
+            max_row: int = row + 1
+
+        else:
+            wb: Workbook = openpyxl.Workbook()
+            ws: Worksheet = wb.active
+            max_row: int = 1
+
+        for row, good_item in enumerate(goods, max_row):
+            for col, key in enumerate(('website', 'title', 'category'), 1):
+                ws.cell(row=row, column=col).value = good_item.get(key, '')
+        wb.save('Result.xlsx')
 
         logtext.emit(f"\nКоличество сохраненных ссылок: {counter}")
 

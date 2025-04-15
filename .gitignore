@@ -4,3 +4,8 @@ build
 gui.py
 Website_checker.py
 
+error.png
+error.txt
+cond.json
+Result.xlsx
+Website_checker_gui.spec
