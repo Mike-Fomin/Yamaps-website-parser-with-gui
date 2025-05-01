@@ -15,6 +15,7 @@ from tkinter import INSERT
 from selenium import webdriver
 from selenium_stealth import stealth
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
@@ -159,9 +160,9 @@ def parse() -> None:
             if empty:
                 continue
             else:
-                title = card.find(name='h1', attrs={'itemprop': 'name'})
-                categories_block = card.find(name='div', class_='business-card-title-view__categories')
-                categories: list = categories_block.find_all(name='a')
+                title: Tag = card.find(name='h1', attrs={'itemprop': 'name'})
+                categories_block: Tag = card.find(name='div', class_='business-categories-view')
+                categories: list[Tag] = categories_block.find_all(name='a')
 
                 url_block = card.find(name='div', class_='business-urls-view')
                 if url_block:
@@ -197,7 +198,7 @@ def parse() -> None:
                             logtext.emit('добавляю к результату!')
 
                             title_text: str = title.text.strip()
-                            category: str = '; '.join(list(map(lambda x: x.get('title'), categories)))
+                            category: str = '; '.join(list(map(lambda x: x.get('title'), categories))) if categories else ''
                             new_item: dict[str, str] = {
                                 'website': website,
                                 'title': title_text,
@@ -212,7 +213,7 @@ def parse() -> None:
                 else:
                     continue
 
-    except BaseException:
+    except Exception:
         print()
         traceback.print_exc()
         logtext.emit(traceback.format_exc())
