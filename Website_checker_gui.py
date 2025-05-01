@@ -215,7 +215,7 @@ def parse() -> None:
                 else:
                     continue
 
-    except Exception:
+    except BaseException:
         print()
         traceback.print_exc()
         logtext.emit(traceback.format_exc())
