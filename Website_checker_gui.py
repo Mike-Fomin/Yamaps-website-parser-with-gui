@@ -161,8 +161,10 @@ def parse() -> None:
                 continue
             else:
                 title: Tag = card.find(name='h1', attrs={'itemprop': 'name'})
-                categories_block: Tag = card.find(name='div', class_='business-categories-view')
-                categories: list[Tag] = categories_block.find_all(name='a')
+                categories_block: Tag | None = card.find(name='div', class_='business-categories-view')
+                categories: list = []
+                if categories_block:
+                    categories: list[Tag] = categories_block.find_all(name='a')
 
                 url_block = card.find(name='div', class_='business-urls-view')
                 if url_block:
