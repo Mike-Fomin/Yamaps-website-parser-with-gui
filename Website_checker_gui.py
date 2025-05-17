@@ -9,6 +9,7 @@ import threading
 import traceback
 import openpyxl
 
+from datetime import datetime
 from tkinter.font import Font
 from tkinter import filedialog
 from tkinter import INSERT
@@ -22,6 +23,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 
 FLAG: bool = False
@@ -129,91 +131,101 @@ def parse() -> None:
         wait.until(EC.presence_of_element_located((By.TAG_NAME, 'input')))
         input_line = driver.find_element(By.TAG_NAME, 'input')
         for i, website in enumerate(websites, 1):
-            if i < index:
-                continue
-            if FLAG:
-                raise KeyboardInterrupt('Приостановка работы!')
-            website = website.lower()
-            logtext.emit(f"\n{i}/{length} - {website}")
-            item: dict = {'index': i, 'website': website, 'counter': counter}
-
-            input_line.click()
-            time.sleep(0.2)
-            input_line.send_keys(Keys.CONTROL, 'a')
-            time.sleep(0.2)
-            input_line.send_keys(Keys.DELETE)
-            time.sleep(0.2)
-            input_line.send_keys(website)
-            time.sleep(0.2)
-            input_line.send_keys(Keys.ENTER)
-            time.sleep(0.2)
-
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[type="submit"]')))
-            time.sleep(0.2)
-
-            page = driver.page_source
-            soup = BeautifulSoup(page, 'lxml')
-
-            card_selen = driver.find_element(By.CSS_SELECTOR, '.scroll__content')
-            card = soup.find(name='div', class_='scroll__content')
-            empty = card.find(name='div', class_='search-list-view')
-            if empty:
-                continue
-            else:
-                title: Tag = card.find(name='h1', attrs={'itemprop': 'name'})
-                categories_block: Tag | None = card.find(name='div', class_='business-categories-view')
-                categories: list = []
-                if categories_block:
-                    categories: list[Tag] = categories_block.find_all(name='a')
-
-                url_block = card.find(name='div', class_='business-urls-view')
-                if url_block:
-                    more = url_block.find(name='div', class_='card-feature-view__additional')
-                    if more:
-                        url_block_selen = card_selen.find_element(By.CSS_SELECTOR, '.business-urls-view')
-                        url_block_selen.find_element(By.CSS_SELECTOR, '.card-feature-view__additional').click()
-                        time.sleep(0.3)
-
-                        page_add = driver.page_source
-                        soup_add = BeautifulSoup(page_add, 'lxml')
-                        card_add = soup_add.find(name='div', class_='scroll__content')
-                        url_block = card_add.find(name='div', class_='business-urls-view')
-
-                    urls = url_block.find_all(name='a', class_='business-urls-view__link')
-                    urls = list(map(lambda x: x.text, urls))
-                    if any(map(lambda x: website in x, urls)):
-                        logtext.emit(f" ---> Совпадение по email ---> ")
-                        reviews_block = card.find(name='div', class_='business-card-title-view__header')
-                        reviews = reviews_block.find(name='div', class_='business-header-rating-view__text').text.lower()
-                        if reviews == 'ещё нет отзывов':
-                            revs = 0
-                        else:
-                            revs = int(reviews.split()[0].replace('(', '').replace(')', ''))
-                        status = card.find(name='div', class_='business-card-title-view__bottom').text.lower()
-                        if revs < 2:
-                            logtext.emit('не хватает отзывов')
-                            continue
-                        elif any(map(lambda x: x in status, ['больше не работает', 'временно не работает', 'компания закрыта'])):
-                            logtext.emit(f'статус "{status}"')
-                            continue
-                        else:
-                            logtext.emit('добавляю к результату!')
-
-                            title_text: str = title.text.strip()
-                            category: str = '; '.join(list(map(lambda x: x.get('title'), categories))) if categories else ''
-                            new_item: dict[str, str] = {
-                                'website': website,
-                                'title': title_text,
-                                'category': category
-                            }
-                            goods.append(new_item)
-
-                            counter += 1
-                            count_log.delete()
-                            count_log.emit(f" {counter}")
-
-                else:
+            try:
+                if i < index:
                     continue
+                if FLAG:
+                    raise KeyboardInterrupt('Приостановка работы!')
+                website = website.lower()
+                logtext.emit(f"\n{i}/{length} - {website}")
+                item: dict = {'index': i, 'website': website, 'counter': counter}
+
+                input_line.click()
+                time.sleep(0.2)
+                input_line.send_keys(Keys.CONTROL, 'a')
+                time.sleep(0.2)
+                input_line.send_keys(Keys.DELETE)
+                time.sleep(0.2)
+                input_line.send_keys(website)
+                time.sleep(0.2)
+                input_line.send_keys(Keys.ENTER)
+                time.sleep(0.2)
+
+                wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, '[type="submit"]')))
+                time.sleep(0.2)
+
+                page = driver.page_source
+                soup = BeautifulSoup(page, 'lxml')
+
+                card_selen = driver.find_element(By.CSS_SELECTOR, '.scroll__content')
+                card = soup.find(name='div', class_='scroll__content')
+                empty = card.find(name='div', class_='search-list-view')
+                if empty:
+                    continue
+                else:
+                    title: Tag = card.find(name='h1', attrs={'itemprop': 'name'})
+                    categories_block: Tag | None = card.find(name='div', class_='business-categories-view')
+                    categories: list = []
+                    if categories_block:
+                        categories: list[Tag] = categories_block.find_all(name='a')
+
+                    url_block = card.find(name='div', class_='business-urls-view')
+                    if url_block:
+                        more = url_block.find(name='div', class_='card-feature-view__additional')
+                        if more:
+                            url_block_selen = card_selen.find_element(By.CSS_SELECTOR, '.business-urls-view')
+                            url_block_selen.find_element(By.CSS_SELECTOR, '.card-feature-view__additional').click()
+                            time.sleep(0.3)
+
+                            page_add = driver.page_source
+                            soup_add = BeautifulSoup(page_add, 'lxml')
+                            card_add = soup_add.find(name='div', class_='scroll__content')
+                            url_block = card_add.find(name='div', class_='business-urls-view')
+
+                        urls = url_block.find_all(name='a', class_='business-urls-view__link')
+                        urls = list(map(lambda x: x.text, urls))
+                        if any(map(lambda x: website in x, urls)):
+                            logtext.emit(f" ---> Совпадение по email ---> ")
+                            reviews_block = card.find(name='div', class_='business-card-title-view__header')
+                            reviews = reviews_block.find(name='div', class_='business-header-rating-view__text').text.lower()
+                            if reviews == 'ещё нет отзывов':
+                                revs = 0
+                            else:
+                                revs = int(reviews.split()[0].replace('(', '').replace(')', ''))
+                            status = card.find(name='div', class_='business-card-title-view__bottom').text.lower()
+                            if revs < 2:
+                                logtext.emit('не хватает отзывов')
+                                continue
+                            elif any(map(lambda x: x in status, ['больше не работает', 'временно не работает', 'компания закрыта'])):
+                                logtext.emit(f'статус "{status}"')
+                                continue
+                            else:
+                                logtext.emit('добавляю к результату!')
+
+                                title_text: str = title.text.strip()
+                                category: str = '; '.join(list(map(lambda x: x.get('title'), categories))) if categories else ''
+                                new_item: dict[str, str] = {
+                                    'website': website,
+                                    'title': title_text,
+                                    'category': category
+                                }
+                                goods.append(new_item)
+
+                                counter += 1
+                                count_log.delete()
+                                count_log.emit(f" {counter}")
+
+                    else:
+                        continue
+
+            except (TimeoutException, NoSuchElementException):
+                logtext.emit(f'\nСервер не отвечает. Перезагрузка страницы...')
+                driver.refresh()
+                driver.implicitly_wait(7)
+                time.sleep(3)
+                wait.until(EC.presence_of_element_located((By.TAG_NAME, 'input')))
+                continue
+
     except KeyboardInterrupt:
         logtext.emit(f'\nПоследний элемент = {website}, строка {i}')
 
@@ -227,8 +239,9 @@ def parse() -> None:
         logtext.emit(f'\nПоследний элемент = {website}, строка {i}')
 
         driver.save_screenshot('error.png')
-        with open('error.txt', 'w', encoding='utf-8') as error_file:
-            error_file.write(traceback.format_exc())
+        with open('error.txt', 'a', encoding='utf-8') as error_file:
+            error_file.write(f"\n{datetime.now().strftime('%d-%m-%Y %H:%M')}")
+            error_file.write(f"\n{traceback.format_exc()}")
 
         with open('cond.json', 'w', encoding='utf-8') as json_file:
             json.dump(item, json_file, indent=4, ensure_ascii=False)
